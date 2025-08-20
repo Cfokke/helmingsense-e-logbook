@@ -6,15 +6,16 @@ This backlog tracks open questions, next tasks, and future work. It complements 
 ---
 
 ## 1. Open Questions (to resolve before implementation)
-- [ ] Confirm Signal K endpoint (URL/port) and whether token is required.
-- [ ] Finalize autolog CSV headers (add/remove RPM, Depth, Battery?).
-- [ ] Decide snapshot retention: rolling 24h file vs daily-rotated files.
-- [ ] Confirm timestamp format in CSV exports (currently `YYYY-MM-DDTHH:mm:ssZ` in UTC).
-- [ ] Define enum values for crew, autopilot, propulsion, visibility, sea_state.
-- [ ] Confirm preferred local viewer URL/port on OTUS (e.g., http://otus:8080).
+- [x] Confirm Signal K endpoint and token: http://localhost:3000/signalk/v1/api/vessels/self (no token for MVP).
+- [x] Finalize autolog CSV headers & enums (see decisions).
+- [x] Snapshot retention: last 24h only (snapshots). DB/CSV are permanent.
+- [x] Timestamp format: UTC ISO 8601 without seconds (YYYY-MM-DDTHH:mmZ). UI shows local time.
+- [x] Define enum values (see decisions).
+- [x] Viewer port: 8080.
+
 
 ## 2. Near-Term Tasks
-- [ ] Add `docs/INDEX.md` (Compass index) — **in progress**.
+- [x] Add `docs/INDEX.md` (Compass index) — **in progress**.
 - [ ] Write `DECISIONS.md` skeleton (log ADRs succinctly).
 - [ ] Finalize `DIRECTORY-TREE.md` acceptance (repo layout + data flow locked).
 
