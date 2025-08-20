@@ -16,8 +16,8 @@ This backlog tracks open questions, next tasks, and future work. It complements 
 
 ## 2. Near-Term Tasks
 - [x] Add `docs/INDEX.md` (Compass index) — **in progress**.
-- [ ] Write `DECISIONS.md` skeleton (log ADRs succinctly).
-- [ ] Finalize `DIRECTORY-TREE.md` acceptance (repo layout + data flow locked).
+- [x] Write `DECISIONS.md` skeleton (log ADRs succinctly).
+- [x] Finalize `DIRECTORY-TREE.md` acceptance (repo layout + data flow locked).
 
 ## 3. Future Enhancements
 - [ ] CI: file-length guard (>600 lines), lint, tests.
