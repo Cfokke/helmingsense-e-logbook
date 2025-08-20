@@ -1,0 +1,37 @@
+setup:
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+starting:
+git init                  # Start a new repo
+git clone URL             # Clone an existing repo
+everyday workflow:
+git status                # Show changes
+git add file              # Stage file
+git add .                 # Stage all
+git commit -m "Message"   # Commit staged changes
+git log --oneline         # Show commit history
+branching:
+git branch                # List branches
+git branch name           # Create branch
+git checkout name         # Switch branch
+git switch -c name        # Create + switch
+git merge name            # Merge branch into current
+remote:
+git remote -v             # Show remotes
+git push origin branch    # Push branch
+git pull origin branch    # Pull updates
+git fetch                 # Get remote info without merge
+undo/fix:
+git restore file          # Discard changes
+git reset --hard HEAD     # Reset to last commit
+git revert commit_hash    # Undo commit safely
+stash(save work temporarily):
+git stash                 # Save work
+git stash pop             # Restore saved work
+PullRequests (Github):
+-push your branch
+git push origin branch_name
+-Open a pull request from your branch into main
+-commit often with clear messages
+-keep feature work in branches, merge via Pull Requests
+***** Use got status often-----Your Best friend*****8
