@@ -1,0 +1,28 @@
+# HelmingSense E‑Logbook — Example Config (documentation only)
+# Conforms to docs/SCHEMAS.md (JSON Schema section)
+
+signalk:
+  base_url: "http://localhost:3000/signalk/v1/api/vessels/self"
+  token: ""             # optional; empty on trusted LAN for MVP
+  timeout_sec: 5
+
+sampling:
+  snapshot_interval_sec: 60
+  autolog_on_the_hour: true
+  # These are the Signal K paths we expect to snapshot.
+  # Additional GPS/AIS/Seatalk fields may be added in later PRs.
+  fields:
+    - environment.inside.temperature
+    - environment.inside.pressure
+    - environment.inside.dewPointTemperature
+    - environment.inside.humidity
+    - navigation.pitch
+    - navigation.roll
+
+exports:
+  dir: "/opt/helmingsense/data"
+  csv_timestamp_format: "YYYY-MM-DDTHH:mmZ"   # UTC, no seconds (ISO 8601)
+
+viewer:
+  auto_refresh_sec: 3600
+  local_base_url: "http://localhost:8080"
