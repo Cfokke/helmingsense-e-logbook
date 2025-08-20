@@ -1,0 +1,27 @@
+{
+  "signalk": {
+    "base_url": "http://localhost:3000/signalk/v1/api/vessels/self",
+    "token": "",
+    "timeout_sec": 5
+  },
+  "sampling": {
+    "snapshot_interval_sec": 60,
+    "autolog_on_the_hour": true,
+    "fields": [
+      "environment.inside.temperature",
+      "environment.inside.pressure",
+      "environment.inside.dewPointTemperature",
+      "environment.inside.humidity",
+      "navigation.pitch",
+      "navigation.roll"
+    ]
+  },
+  "exports": {
+    "dir": "/opt/helmingsense/data",
+    "csv_timestamp_format": "YYYY-MM-DDTHH:mmZ"
+  },
+  "viewer": {
+    "auto_refresh_sec": 3600,
+    "local_base_url": "http://localhost:8080"
+  }
+}
