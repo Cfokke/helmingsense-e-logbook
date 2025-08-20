@@ -77,6 +77,7 @@ Signal K and Runtime Assumptions (current)
 - Admin UI is at /admin; API and WS live under /signalk
 - Auth: none for MVP on trusted LAN (token optional later)
 - Time: store UTC; display local as needed
+- Snapshots: retain last 24h only (JSON pruned to a rolling 24h window). DB/CSV are permanent.
 
 Autolog MVP Columns (proposal to lock)
 - timestamp (UTC, ISO 8601)
@@ -129,11 +130,11 @@ sampling:
 
 exports:
   dir: "/opt/helmingsense/data"
-  csv_timestamp_format: "YYYY-MM-DDTHH:mm:ssZ"   # stored in UTC
+  csv_timestamp_format: "YYYY-MM-DDTHH:mmZ"   # stored in UTC- no seconds
 
 viewer:
   auto_refresh_sec: 3600
-  local_base_url: "http://localhost:8080"        # optional future UI port
+  local_base_url: "http://localhost:8080"        # UI port
 ```
 
 Guardrails
