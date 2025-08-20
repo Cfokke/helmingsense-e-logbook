@@ -70,6 +70,19 @@ On‑Device Layout (production)
 
 /etc/helmingsense/config.yaml       # Canonical config (root-writable)
 /etc/systemd/system/helmingsense.service
+
+### Dev vs Prod Notes
+
+- **Production (on-device):**  
+  `config.exports.dir` → `/opt/helmingsense/data`  
+  The systemd service runs with permission to create and write in that directory.
+
+- **Development (local laptop):**  
+  Change `config.exports.dir` to `./data` in `config/config.json` so snapshots and CSVs are stored in a git-ignored local folder.  
+  Run:
+  ```bash
+  mkdir -p data
+
 ```
 
 Signal K and Runtime Assumptions (current)
