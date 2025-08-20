@@ -17,7 +17,7 @@
     ]
   },
   "exports": {
-    "dir": "/opt/helmingsense/data",
+    "dir": "./data",
     "csv_timestamp_format": "YYYY-MM-DDTHH:mmZ"
   },
   "viewer": {
