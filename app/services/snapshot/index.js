@@ -1,11 +1,10 @@
 // app/services/snapshot/index.js
-// Entry point: loads config, sets up the polling loop, and logs snapshots.
 
 import { loadConfig } from "../../utils/config/load.js";
 import { validateConfig } from "../../utils/config/validate.js";
 import { fetchSelf } from "./fetch.js";
 import { buildSnapshot } from "./process.js";
-import { storeSnapshot } from "./store.js";
+import { createStore } from "./store.js";   // changed
 
 function exitWith(msg, code = 1) {
   console.error(msg);
@@ -22,17 +21,20 @@ async function main() {
   console.log(`[snapshot] Using config from: ${source}`);
   console.log(`[snapshot] Interval: ${config.sampling.snapshot_interval_sec}s`);
   console.log(`[snapshot] Endpoint: ${config.signalk.base_url}`);
+  console.log(`[snapshot] Store dir: ${config.exports.dir}`);
+
+  const store = createStore(config.exports.dir, 24);
 
   let timer = null;
   let running = false;
 
   const tick = async () => {
-    if (running) return; // prevent re-entrancy if a tick runs long
+    if (running) return;
     running = true;
     try {
       const raw = await fetchSelf(config.signalk.base_url, config.signalk.timeout_sec);
       const snap = buildSnapshot(raw, config.sampling.fields);
-      await storeSnapshot(snap);
+      await store.save(snap);                             // changed
     } catch (e) {
       console.error("[snapshot] Tick error:", e.message || e);
     } finally {
@@ -40,7 +42,6 @@ async function main() {
     }
   };
 
-  // immediate tick once, then interval
   await tick();
   timer = setInterval(tick, config.sampling.snapshot_interval_sec * 1000);
 
@@ -54,3 +55,4 @@ async function main() {
 }
 
 main().catch((e) => exitWith(e?.message || String(e)));
+
