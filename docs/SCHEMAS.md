@@ -59,8 +59,8 @@ Display: Frontend converts to local time (fallback: show UTC).
 Snapshots: keep last 24h only (rolling). DB/CSV persist indefinitely.
 
 4) SQLite schema (DDL — documentation only)
- -- Autolog (hourly)
-CREATE TABLE autolog (
+ -- Autologs (hourly)
+CREATE TABLE autologs (
   id INTEGER PRIMARY KEY,
   timestamp_utc TEXT NOT NULL,            -- YYYY-MM-DDTHH:mmZ
   crew TEXT NOT NULL,
@@ -78,8 +78,8 @@ CREATE TABLE autolog (
   UNIQUE(timestamp_utc)                    -- one per hour tick
 );
 
--- Manual log
-CREATE TABLE manual_log (
+-- Manual logs
+CREATE TABLE manual_logs (
   id INTEGER PRIMARY KEY,
   timestamp_utc TEXT NOT NULL,
   crew TEXT NOT NULL,
