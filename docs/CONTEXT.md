@@ -41,10 +41,16 @@ Open Questions (for Cfokke)
 - Snapshot retention: rolling 24h file vs daily‑rotated files
 - Preferred local URL/port on OTUS (e.g., http://otus:8080)
 
-Decisions Agreed So Far
+Decisions Agreed So Far (appended 20-08-25)
 - CSV stores angles in degrees (not radians)
 - SQLite is source of truth; CSVs are derived/exports
 - Store times in UTC; display in local time as needed
-
+Snapshots retain last 24h only; DB + CSV persist indefinitely.
+- Timestamps stored as UTC ISO 8601 without seconds: YYYY-MM-DDTHH:mmZ; UI displays local time.
+- Manual dropdown enums locked:
+  crew: 1–6; autopilot: off|standby|engaged|wind; propulsion: drift|sailing|motor-sailing|under engine|Heave-to;
+  visibility: excellent|good|fair|poor|fog; sea_state: smooth|slight|moderate|rough|very-rough.
+- Viewer runs on http://localhost:8080.
+  
 Focus/Context Re‑sync Trigger
 - If discussion drifts, we pause and restate: Goal → Current Task → Acceptance → Next File to Touch. If still unclear, we open an issue and update CONTEXT.md accordingly.
