@@ -130,7 +130,7 @@ sampling:
 
 exports:
   dir: "/opt/helmingsense/data"
-  csv_timestamp_format: "YYYY-MM-DDTHH:mmZ"   # stored in UTC- no seconds
+  csv_timestamp_format: "YYYY-MM-DDTHH:mmZ"   # stored in UTC- no seconds (ISO 8601)
 
 viewer:
   auto_refresh_sec: 3600
