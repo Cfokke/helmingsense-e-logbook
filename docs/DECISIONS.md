@@ -49,3 +49,7 @@
 - **Decision:** Signal K base resource: `http://localhost:3000/signalk/v1/api/vessels/self` (no token for MVP). Viewer runs on **http://localhost:8080**.
 - **Impact:** `config.yaml` reflects endpoint and port; token can be added later.
 
+## ADR-0006 — Plural table names
+- **Date:** 2025‑08‑20
+- **Decision:** Use plural table names `autologs`, `manual_logs` (was singular).
+- **Impact:** Migration 001 updated; helpers write to `autologs`. Docs reflect plural naming.
