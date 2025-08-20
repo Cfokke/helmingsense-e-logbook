@@ -1,8 +1,8 @@
--- 001_init.sql — initial schema from docs/SCHEMAS.md
+-- 001_init.sql — initial schema (plural tables)
 
 PRAGMA journal_mode=WAL;
 
-CREATE TABLE IF NOT EXISTS autolog (
+CREATE TABLE IF NOT EXISTS autologs (
   id INTEGER PRIMARY KEY,
   timestamp_utc TEXT NOT NULL,            -- YYYY-MM-DDTHH:mmZ
   crew TEXT NOT NULL,
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS autolog (
   UNIQUE(timestamp_utc)
 );
 
-CREATE TABLE IF NOT EXISTS manual_log (
+CREATE TABLE IF NOT EXISTS manual_logs (
   id INTEGER PRIMARY KEY,
   timestamp_utc TEXT NOT NULL,
   crew TEXT NOT NULL,
