@@ -71,7 +71,7 @@ On‑Device Layout (production)
 /etc/helmingsense/config.yaml       # Canonical config (root-writable)
 /etc/systemd/system/helmingsense.service
 
-### Dev vs Prod Notes
+## Dev vs Prod Notes
 
 - **Production (on-device):**  
   `config.exports.dir` → `/opt/helmingsense/data`  
