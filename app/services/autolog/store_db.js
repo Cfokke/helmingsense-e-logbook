@@ -10,7 +10,7 @@ export async function insertAutolog(dbDir, row) {
     : (typeof v === "number" ? String(v) : `'${escapeSqlString(v)}'`);
 
   const sql = `
-INSERT INTO autolog (
+INSERT INTO autologs (
   timestamp_utc, crew, autopilot, propulsion, visibility, sea_state, observations,
   lat, lon, cog_true_deg, hdg_mag_deg, hdg_true_deg,
   sog_kt, aws_kt, tws_kt, twd_true_deg,
