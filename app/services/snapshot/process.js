@@ -1,37 +1,23 @@
 // app/services/snapshot/process.js
-// Normalizes one snapshot. Adds derived "live" values (converted units).
+// Normalizes one Signal K "self" payload snapshot.
+// Keeps the raw payload and adds a derived "live" object with converted units.
 
-export function buildSnapshot(selfPayload, fields) {
+export function buildSnapshot(selfPayload) {
   return {
     timestamp_utc: nowUtcNoSeconds(),
-    requested_fields: Array.isArray(fields) ? fields.slice() : [],
     raw: selfPayload || {},
     live: deriveLive(selfPayload || {})
   };
 }
 
 function deriveLive(raw) {
-  // Defensive navigation of nested objects; Signal K "self" payloads often use nested { path: { value, ... } }
-  // We only touch the six live paths you confirmed.
-  const val = (o) => (o && typeof o === "object" && "value" in o ? o.value : undefined);
+  const get = (path) => safeGet(raw, path);
 
-  // Try common shapes:
-  const get = (path) => {
-    // path like "environment.inside.temperature"
-    const parts = path.split(".");
-    let cur = raw;
-    for (const p of parts) {
-      if (cur == null) break;
-      cur = cur[p];
-    }
-    return val(cur) ?? cur; // accept either {value} or raw number
-  };
-
-  // Conversions
-  const K_to_C = (k) => (typeof k === "number" ? (k - 273.15) : undefined);
-  const ratio_to_pct = (r) => (typeof r === "number" ? (r * 100) : undefined);
-  const Pa_to_mbar = (pa) => (typeof pa === "number" ? (pa / 100) : undefined);
-  const rad_to_deg = (rad) => (typeof rad === "number" ? (rad * 180 / Math.PI) : undefined);
+  // Conversions (defensive for non-numbers)
+  const K_to_C = (k) => (typeof k === "number" ? k - 273.15 : undefined);
+  const ratio_to_pct = (r) => (typeof r === "number" ? r * 100 : undefined);
+  const Pa_to_mbar = (pa) => (typeof pa === "number" ? pa / 100 : undefined);
+  const rad_to_deg = (rad) => (typeof rad === "number" ? (rad * 180) / Math.PI : undefined);
 
   const tempK = get("environment.inside.temperature");
   const dewK = get("environment.inside.dewPointTemperature");
@@ -41,13 +27,31 @@ function deriveLive(raw) {
   const rollRad = get("navigation.roll");
 
   return {
-    temp_c: K_to_C(tempK),
-    dew_c: K_to_C(dewK),
-    hum_pct: ratio_to_pct(humRatio),
-    pres_mbar: Pa_to_mbar(presPa),
-    pitch_deg: rad_to_deg(pitchRad),
-    roll_deg: rad_to_deg(rollRad)
+    temp_c: K_to_C(numOrVal(tempK)),
+    dew_c: K_to_C(numOrVal(dewK)),
+    hum_pct: ratio_to_pct(numOrVal(humRatio)),
+    pres_mbar: Pa_to_mbar(numOrVal(presPa)),
+    pitch_deg: rad_to_deg(numOrVal(pitchRad)),
+    roll_deg: rad_to_deg(numOrVal(rollRad))
   };
+}
+
+// Pulls nested path like "environment.inside.temperature" from raw
+function safeGet(obj, dotted) {
+  const parts = dotted.split(".");
+  let cur = obj;
+  for (const p of parts) {
+    if (cur == null) return undefined;
+    cur = cur[p];
+  }
+  return cur;
+}
+
+// Accept { value: 123 } shapes or bare numbers
+function numOrVal(x) {
+  if (typeof x === "number") return x;
+  if (x && typeof x === "object" && "value" in x && typeof x.value === "number") return x.value;
+  return undefined;
 }
 
 function nowUtcNoSeconds() {
