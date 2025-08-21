@@ -6,6 +6,7 @@ import { validateConfig } from "../../utils/config/validate.js";
 import { nextTopOfHourMs, msUntil, sleep } from "./schedule.js";
 import { loadLatestSnapshot } from "./latest.js";
 import { buildAutologRow } from "./build_row.js";
+import { insertAutolog } from "./store_db.js";
 
 function exitWith(msg, code = 1) {
   console.error(msg);
@@ -32,12 +33,13 @@ async function main() {
     try {
       const snap = loadLatestSnapshot(storeDir);
       const row = buildAutologRow(snap, targetMs);
+      const res = await insertAutolog(config.exports.dir, row);
+  if (!res.ok) {
+  console.error("[autolog] insert failed:", res.error);
+  } else {
+  console.log("[autolog] inserted:", row.Timestamp);
+}
 
-      // Console-only emission for now
-      console.log(JSON.stringify({ autolog: row }));
-    } catch (e) {
-      console.error("[autolog] tick error:", e.message || e);
-    }
 
     // loop continues to the next hour
   }
