@@ -24,15 +24,10 @@ let model = {
   headers: { auto: [], manual: [] },
   autoRefreshSec: 3600,
   timer: null
-  liveCols: new Set()
 };
 
 async function init() {
   await refreshAll();
-  try {
-    const live = await (await fetch("/liveness.json", { cache: "no-store" })).json();
-    model.liveCols = new Set(live?.live || []);
-  } catch { model.liveCols = new Set(); }
   wireUI();
   // Ask the backend what the interval is by peeking at index logs (we can’t read config directly in the browser)
   // We’ll just display the default we use server-side if UI doesn’t know precisely:
@@ -110,15 +105,7 @@ function render() {
 function tableHtml(headers, rows) {
   if (!headers.length) return "<div class='muted'>No data.</div>";
   const head = `<tr>${headers.map(h=>`<th>${escapeHtml(h)}</th>`).join("")}</tr>`;
-  const body = rows.map(r => `<tr>${
-  r.map((v,i)=>{
-    const h = headers[i];
-    const live = model.liveCols.has(h);
-    const display = (v === null || v === "" || v === undefined) ? "—" : v;
-    const cls = live ? "" : "stale";
-    return `<td class="${cls}">${escapeHtml(display)}</td>`;
-  }).join("")
-}</tr>`).join("");
+  const body = rows.map(r => `<tr>${r.map(v=>`<td>${escapeHtml(v)}</td>`).join("")}</tr>`).join("");
   return `<div style="overflow:auto; max-height:70vh"><table>${head}${body}</table></div>`;
 }
 
@@ -137,13 +124,15 @@ function cardsHtml(kind, headers, rows) {
     const cog = row[ix["COG (°T)"]] ?? "";
     const tagClass = kind === "auto" ? "tag-auto" : "tag-manual";
 
-    const mini = headers.map((h,i)=>{
-  const live = model.liveCols.has(h);
-  const val = row[i];
-  const display = (val === null || val === "" || val === undefined) ? "—" : val;
-  const cls = live ? "" : "stale";
-  return `<div class="${cls}"><span class="muted">${escapeHtml(h)}:</span> ${escapeHtml(display)}</div>`;
-}).join("");
+    const mini = headers.map((h,i)=>`<div><span class="muted">${escapeHtml(h)}:</span> ${escapeHtml(row[i] ?? "")}</div>`).join("");
+
+    return `<div class="card ${tagClass}">
+      <div><strong>${escapeHtml(ts)}</strong></div>
+      <div class="muted">Crew ${escapeHtml(crew)} • ${escapeHtml(prop)} • SOG ${escapeHtml(sog)} kt • TWS ${escapeHtml(tws)} kt • COG ${escapeHtml(cog)}°</div>
+      <div style="margin:6px 0">${escapeHtml(obs)}</div>
+      <details><summary class="muted">Show all</summary>${mini}</details>
+    </div>`;
+  }).join("");
 
   return `<div class="cards">${cards}</div>`;
 }
