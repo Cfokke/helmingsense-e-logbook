@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>HelmingSense E‑Logbook — Viewer (MVP)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 16px; }
+    h1 { margin: 0 0 12px; }
+    .bar { display:flex; gap:8px; align-items:center; margin-bottom: 10px; flex-wrap: wrap; }
+    button { padding:6px 10px; border:1px solid #ccc; background:#f7f7f7; cursor:pointer; border-radius:6px; }
+    button.active { background:#e0f0ff; border-color:#7bb8ff; }
+    .tabs { display:flex; gap:8px; margin: 12px 0; }
+    .hidden { display:none; }
+    table { border-collapse: collapse; width:100%; font-size: 14px; }
+    th, td { border:1px solid #ddd; padding:6px 8px; }
+    th { background:#fafafa; position: sticky; top: 0; z-index: 1; }
+    .cards { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:10px; }
+    .card { border:1px solid #ddd; border-radius:10px; padding:10px; background:#fff; }
+    .tag-auto { background: #e7f7e7; }    /* autolog pastel green */
+    .tag-manual { background: #fde7e7; }  /* manual pastel red */
+    .muted { color:#666; font-size: 12px; }
+    .sticky { position: sticky; top: 0; background: #fff; padding:6px 0; }
+    .count { font-size:12px; color:#555; }
+  </style>
+</head>
+<body>
+  <h1>HelmingSense E‑Logbook — Viewer</h1>
+
+  <div class="bar sticky">
+    <div class="tabs">
+      <button id="tab-auto" class="active">Autolog</button>
+      <button id="tab-manual">Manual</button>
+    </div>
+    <div class="tabs">
+      <button id="view-table" class="active">Table</button>
+      <button id="view-cards">Cards</button>
+    </div>
+    <div class="tabs">
+      <button id="refresh-now">Refresh</button>
+      <span class="muted">Auto refresh: <span id="auto-interval">—</span></span>
+      <span class="count" id="row-count"></span>
+    </div>
+  </div>
+
+  <div id="auto-table"></div>
+  <div id="auto-cards" class="hidden"></div>
+
+  <div id="manual-table" class="hidden"></div>
+  <div id="manual-cards" class="hidden"></div>
+
+  <script src="/viewer.js" type="module"></script>
+</body>
+</html>
