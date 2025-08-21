@@ -6,14 +6,9 @@
   "scripts": {
     "test": "node --test",
     "db:migrate": "node bin/db-migrate.js"
-  }
-}
-
-{
-  "scripts": {
-    "test": "node --test",
-    "db:migrate": "node bin/db-migrate.js",
-    "export:auto": "node bin/export-autolog-csv.js"
+    "export:auto": "node bin/export-autolog-csv.js",
+    "export:manual": "node bin/export-manual-csv.js",
+    "serve:manual": "node app/services/manual/server.js"
   }
 }
 
