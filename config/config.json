@@ -1,6 +1,6 @@
 {
   "signalk": {
-    "base_url": "http://localhost:3000",
+    "base_url": "http://localhost:3000/signalk/v1/api/vessels/self",
     "token": "",
     "timeout_sec": 5
   },
