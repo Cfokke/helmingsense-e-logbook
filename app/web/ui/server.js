@@ -8,6 +8,18 @@ import path from "node:path";
 import { loadConfig } from "../../utils/config/load.js";
 import { validateConfig } from "../../utils/config/validate.js";
 
+function liveColumns() {
+  // Columns that are driven by live streams right now
+  return [
+    "Temp (°C)",
+    "Dew (°C)",
+    "Hum (%)",
+    "Pres (mbar)",
+    "Pitch (°)",
+    "Roll (°)"
+  ];
+}
+
 function send(res, code, headers, body) {
   res.writeHead(code, headers);
   res.end(body);
@@ -63,6 +75,10 @@ function start() {
     }
     if (req.method === "GET" && req.url === "/manual.csv") {
       return serveFile(res, csvPath(dataDir, "manual_log.csv"), "text/csv; charset=utf-8");
+    }
+    if (req.method === "GET" && req.url === "/liveness.json") {
+      const body = JSON.stringify({ live: liveColumns() });
+      return send(res, 200, { "content-type": "application/json" }, body);
     }
 
     send(res, 404, { "content-type": "text/plain" }, "Not found");
