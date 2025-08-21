@@ -25,3 +25,18 @@
     "local_base_url": "http://localhost:8080"
   }
 }
+ ,
+  "defaults": {
+    "stale_values": {
+      "lat": 50.24178,
+      "lon": -3.7564,
+      "cog_true_deg": 60.1,
+      "hdg_mag_deg": 161,
+      "hdg_true_deg": 193.6,
+      "sog_kt": 0.1,
+      "aws_kt": 10.7,
+      "tws_kt": 40.9,
+      "twd_true_deg": 154
+    }
+  }
+
