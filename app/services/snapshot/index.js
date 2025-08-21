@@ -7,7 +7,7 @@ import http from "node:http";
 import https from "node:https";
 import { loadConfig } from "../../utils/config/load.js";
 import { validateConfig } from "../../utils/config/validate.js";
-import * as store from "./file_store.js";            // uses append(...) + prune inside
+import * as store from "./file_store.js";            // we’ll adapt to its actual export
 import { buildSnapshot } from "./process.js";
 
 function exitWith(msg, code = 1) {
@@ -42,6 +42,18 @@ async function fetchJson(url, timeoutMs) {
   });
 }
 
+// ---- adapter: find the right 'append' style function once
+function getAppendFn(mod) {
+  if (typeof mod.append === "function") return mod.append;
+  if (typeof mod.appendSnapshot === "function") return mod.appendSnapshot;
+  if (typeof mod.write === "function") return mod.write;
+  if (typeof mod.default === "function") return mod.default;
+  throw new Error("file_store.js does not export an append-like function (append/appendSnapshot/write/default)");
+}
+// cache it:
+const appendToStore = getAppendFn(store);
+// ----
+
 async function main() {
   const { config, source, error } = loadConfig();
   if (!config) exitWith(`Failed to load config: ${error?.message || error}`);
@@ -72,7 +84,7 @@ async function tick(endpoint, timeoutMs, outDir) {
   try {
     const selfJson = await fetchJson(endpoint, timeoutMs);
     const snap = buildSnapshot(selfJson);
-    await store.append(outDir, snap); // file_store.js handles pruning & corrupt recovery
+    await appendToStore(outDir, snap); // adapter handles actual export name
   } catch (e) {
     console.error("[snapshot] fetch/append failed:", e.message || e);
   }
