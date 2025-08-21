@@ -1,22 +1,36 @@
 // app/services/autolog/build_row.js
 // Builds an autolog row object. Uses live snapshot values where available.
-// Uses config.defaults.stale_values for everything else (no nulls in CSV).
-
-import { loadConfig } from "../../utils/config/load.js";
+// Uses temporary in-code stale defaults for everything else (no nulls in CSV).
 
 const NO_ENTRY = "No entry";
 
+// Temporary anchor defaults (until we extend the config schema on purpose)
+const STALE_DEFAULTS = {
+  lat: 50.24178,
+  lon: -3.7564,
+  cog_true_deg: 60.1,
+  hdg_mag_deg: 161,
+  hdg_true_deg: 193.6,
+  sog_kt: 0.1,
+  aws_kt: 10.7,
+  tws_kt: 40.9,
+  twd_true_deg: 154,
+  // optional stale env defaults if you want them as fallback:
+  temp_c: undefined,
+  pres_mbar: undefined,
+  dew_c: undefined,
+  hum_pct: undefined,
+  pitch_deg: undefined,
+  roll_deg: undefined
+};
+
 export function buildAutologRow(latestSnapshot, nowUtcTopOfHour) {
   const ts = formatUtcNoSeconds(nowUtcTopOfHour);
-  const { config } = loadConfig();
-  const stale = (config?.defaults?.stale_values) || {};
-
   const live = latestSnapshot?.live || {};
 
-  // prefer live value if it's a finite number; else stale default; else null (viewer will render as red "—")
-  const n = (liveVal, staleVal) =>
+  const n = (liveVal, staleKey) =>
     Number.isFinite(liveVal) ? round3(liveVal)
-    : (staleVal != null ? staleVal : null);
+    : (STALE_DEFAULTS[staleKey] != null ? STALE_DEFAULTS[staleKey] : null);
 
   return {
     "Timestamp": ts,
@@ -27,24 +41,23 @@ export function buildAutologRow(latestSnapshot, nowUtcTopOfHour) {
     "Sea_state": NO_ENTRY,
     "Observations": "",
 
-    "Lat": n(undefined, stale.lat),
-    "Lon": n(undefined, stale.lon),
-    "COG (°T)": n(undefined, stale.cog_true_deg),
-    "HdgMag (°)": n(undefined, stale.hdg_mag_deg),
-    "HdgTrue (°)": n(undefined, stale.hdg_true_deg),
-    "SOG (kt)": n(undefined, stale.sog_kt),
+    "Lat": n(undefined, "lat"),
+    "Lon": n(undefined, "lon"),
+    "COG (°T)": n(undefined, "cog_true_deg"),
+    "HdgMag (°)": n(undefined, "hdg_mag_deg"),
+    "HdgTrue (°)": n(undefined, "hdg_true_deg"),
+    "SOG (kt)": n(undefined, "sog_kt"),
 
-    // live environment / attitude
-    "AWS (kt)": n(undefined, stale.aws_kt),
-    "TWS (kt)": n(undefined, stale.tws_kt),
-    "TWD (°T)": n(undefined, stale.twd_true_deg),
+    "AWS (kt)": n(undefined, "aws_kt"),
+    "TWS (kt)": n(undefined, "tws_kt"),
+    "TWD (°T)": n(undefined, "twd_true_deg"),
 
-    "Temp (°C)": n(live.temp_c, stale.temp_c),
-    "Pres (mbar)": n(live.pres_mbar, stale.pres_mbar),
-    "Dew (°C)": n(live.dew_c, stale.dew_c),
-    "Hum (%)": n(live.hum_pct, stale.hum_pct),
-    "Pitch (°)": n(live.pitch_deg, stale.pitch_deg),
-    "Roll (°)": n(live.roll_deg, stale.roll_deg),
+    "Temp (°C)": n(live.temp_c, "temp_c"),
+    "Pres (mbar)": n(live.pres_mbar, "pres_mbar"),
+    "Dew (°C)": n(live.dew_c, "dew_c"),
+    "Hum (%)": n(live.hum_pct, "hum_pct"),
+    "Pitch (°)": n(live.pitch_deg, "pitch_deg"),
+    "Roll (°)": n(live.roll_deg, "roll_deg"),
 
     "_snapshot_ts": latestSnapshot?.timestamp_utc ?? null
   };
@@ -55,7 +68,7 @@ function formatUtcNoSeconds(dateOrMs) {
   const yyyy = d.getUTCFullYear();
   const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
   const dd = String(d.getUTCDate()).padStart(2, "0");
-  const hh = String(d.getUTCHours() + 0).padStart(2, "0"); // already UTC
+  const hh = String(d.getUTCHours()).padStart(2, "0");
   const min = String(d.getUTCMinutes()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}T${hh}:${min}Z`;
 }

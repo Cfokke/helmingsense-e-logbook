@@ -9,6 +9,7 @@
     "export:auto": "node bin/export-autolog-csv.js",
     "export:manual": "node bin/export-manual-csv.js",
     "serve:manual": "node app/services/manual/server.js",
-    "serve:viewer": "node app/web/ui/server.js"
+    "serve:viewer": "node app/web/ui/server.js",
+    "validate-config": "node bin/validate-config.js"
   }
 }
