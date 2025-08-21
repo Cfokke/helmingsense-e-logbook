@@ -8,3 +8,12 @@
     "db:migrate": "node bin/db-migrate.js"
   }
 }
+
+{
+  "scripts": {
+    "test": "node --test",
+    "db:migrate": "node bin/db-migrate.js",
+    "export:auto": "node bin/export-autolog-csv.js"
+  }
+}
+
