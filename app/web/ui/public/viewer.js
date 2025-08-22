@@ -1,10 +1,11 @@
 // app/web/ui/public/viewer.js
-// Fetches /auto.csv and /manual.csv (server maps to *_log.csv), parses CSV,
+// Fetches /merged.csv (new), /auto.csv and /manual.csv, parses CSV,
 // renders table or cards, and marks stale cells per column using staleness.js.
 
 import { markStale } from "./staleness.js";
 
 const ui = {
+  tabMerged: document.getElementById("tab-merged"),
   tabAuto: document.getElementById("tab-auto"),
   tabManual: document.getElementById("tab-manual"),
   viewTable: document.getElementById("view-table"),
@@ -13,6 +14,9 @@ const ui = {
   autoInterval: document.getElementById("auto-interval"),
   rowCount: document.getElementById("row-count"),
 
+  mergedTable: document.getElementById("merged-table"),
+  mergedCards: document.getElementById("merged-cards"),
+
   autoTable: document.getElementById("auto-table"),
   autoCards: document.getElementById("auto-cards"),
   manualTable: document.getElementById("manual-table"),
@@ -20,10 +24,10 @@ const ui = {
 };
 
 let model = {
-  tab: "auto",    // "auto" | "manual"
-  view: "table",  // "table" | "cards"
-  rows: { auto: [], manual: [] },
-  headers: { auto: [], manual: [] },
+  tab: "merged",   // "merged" | "auto" | "manual"
+  view: "table",   // "table" | "cards"
+  rows: { merged: [], auto: [], manual: [] },
+  headers: { merged: [], auto: [], manual: [] },
   autoRefreshSec: 3600,
   timer: null
 };
@@ -89,7 +93,8 @@ function clearTimer() {
 }
 
 function wireUI() {
-  ui.tabAuto.addEventListener("click", () => { model.tab = "auto"; syncUI(); });
+  ui.tabMerged.addEventListener("click", () => { model.tab = "merged"; syncUI(); });
+  ui.tabAuto.addEventListener("click",   () => { model.tab = "auto";   syncUI(); });
   ui.tabManual.addEventListener("click", () => { model.tab = "manual"; syncUI(); });
   ui.viewTable.addEventListener("click", () => { model.view = "table"; syncUI(); });
   ui.viewCards.addEventListener("click", () => { model.view = "cards"; syncUI(); });
@@ -98,17 +103,25 @@ function wireUI() {
 }
 
 function syncUI() {
-  toggleActive(ui.tabAuto, model.tab === "auto");
+  toggleActive(ui.tabMerged, model.tab === "merged");
+  toggleActive(ui.tabAuto,   model.tab === "auto");
   toggleActive(ui.tabManual, model.tab === "manual");
   toggleActive(ui.viewTable, model.view === "table");
   toggleActive(ui.viewCards, model.view === "cards");
 
-  const isAuto = model.tab === "auto";
-  const isTable = model.view === "table";
-  show(ui.autoTable,  isAuto && isTable);
-  show(ui.autoCards,  isAuto && !isTable);
-  show(ui.manualTable,!isAuto && isTable);
-  show(ui.manualCards,!isAuto && !isTable);
+  const isMerged = model.tab === "merged";
+  const isAuto   = model.tab === "auto";
+  const isManual = model.tab === "manual";
+  const isTable  = model.view === "table";
+
+  show(ui.mergedTable, isMerged && isTable);
+  show(ui.mergedCards, isMerged && !isTable);
+
+  show(ui.autoTable,   isAuto   && isTable);
+  show(ui.autoCards,   isAuto   && !isTable);
+
+  show(ui.manualTable, isManual && isTable);
+  show(ui.manualCards, isManual && !isTable);
 
   render();
 }
@@ -117,41 +130,46 @@ function show(el, on) { el.classList.toggle("hidden", !on); }
 function toggleActive(el, on) { el.classList.toggle("active", on); }
 
 async function refreshAll(isManualClick=false) {
-  const [auto, manual] = await Promise.all([
+  const [merged, auto, manual] = await Promise.all([
+    fetchCsv("/merged.csv"),
     fetchCsv("/auto.csv"),
     fetchCsv("/manual.csv")
   ]);
 
-  if (!auto.headers.length && !manual.headers.length) {
-    console.warn("[viewer] No headers from both CSVs. Check server mapping and dataDir.");
-  }
-  if (!auto.rows.length) console.warn("[viewer] /auto.csv returned 0 data rows.");
-  if (!manual.rows.length) console.warn("[viewer] /manual.csv returned 0 data rows.");
+  if (!merged.headers.length) console.warn("[viewer] /merged.csv: no headers");
+  if (!auto.headers.length)   console.warn("[viewer] /auto.csv: no headers");
+  if (!manual.headers.length) console.warn("[viewer] /manual.csv: no headers");
 
+  model.headers.merged = merged.headers;
   model.headers.auto   = auto.headers;
   model.headers.manual = manual.headers;
 
-  // Sort, then compute staleness per column (returns copies of the rows with _stale mask)
-  const sortedAuto   = sortByTimestamp(auto.headers,   auto.rows);
-  const sortedManual = sortByTimestamp(manual.headers, manual.rows);
-  model.rows.auto    = markStale(auto.headers,   sortedAuto);
-  model.rows.manual  = markStale(manual.headers, sortedManual);
+  // Sort each set, then compute staleness per column
+  const mergedSorted = sortByTimestamp(merged.headers, merged.rows);
+  const autoSorted   = sortByTimestamp(auto.headers,   auto.rows);
+  const manualSorted = sortByTimestamp(manual.headers, manual.rows);
+
+  model.rows.merged = markStale(merged.headers, mergedSorted);
+  model.rows.auto   = markStale(auto.headers,   autoSorted);
+  model.rows.manual = markStale(manual.headers, manualSorted);
 
   if (isManualClick) console.log("[viewer] refresh triggered");
   render();
 }
 
 function render() {
-  const set = model.tab === "auto" ? "auto" : "manual";
+  const set = model.tab; // "merged" | "auto" | "manual"
   const h = model.headers[set], rows = model.rows[set];
   ui.rowCount.textContent = `${rows.length} rows`;
 
   if (model.view === "table") {
     const html = tableHtml(h, rows);
-    (set === "auto" ? ui.autoTable : ui.manualTable).innerHTML = html;
+    (set === "merged" ? ui.mergedTable :
+     set === "auto"   ? ui.autoTable   : ui.manualTable).innerHTML = html;
   } else {
     const html = cardsHtml(set, h, rows);
-    (set === "auto" ? ui.autoCards : ui.manualCards).innerHTML = html;
+    (set === "merged" ? ui.mergedCards :
+     set === "auto"   ? ui.autoCards   : ui.manualCards).innerHTML = html;
   }
 }
 
@@ -180,7 +198,9 @@ function cardsHtml(kind, headers, rows) {
     const sog = row[ix["SOG (kt)"]] ?? "";
     const tws = row[ix["TWS (kt)"]] ?? "";
     const cog = row[ix["COG (°T)"]] ?? "";
-    const tagClass = kind === "auto" ? "tag-auto" : "tag-manual";
+    const tagClass = kind === "auto" ? "tag-auto"
+                    : kind === "manual" ? "tag-manual"
+                    : ""; // merged: neutral card background
 
     const mini = headers.map((h,i)=>{
       const val = formatValue(h, row[i]);
