@@ -28,12 +28,12 @@ let model = {
 
 // --------- Formatting rules (exact per your spec) ----------
 const FORMATTERS = {
-  "Temp (°C)": (v) => formatFixed(v, 1),
-  "Dew (°C)": (v) => formatFixed(v, 1),
-  "Hum (%)": (v) => formatInt(v),
+  "Temp (°C)":   (v) => formatFixed(v, 1),
+  "Dew (°C)":    (v) => formatFixed(v, 1),
+  "Hum (%)":     (v) => formatInt(v),
   "Pres (mbar)": (v) => formatInt(v),
-  "Pitch (°)": (v) => formatInt(v),
-  "Roll (°)": (v) => formatInt(v),
+  "Pitch (°)":   (v) => formatInt(v),
+  "Roll (°)":    (v) => formatInt(v),
 };
 // Only formats listed headers; everything else is shown exactly as-is.
 function formatFixed(v, dp) {
@@ -53,6 +53,23 @@ function formatValue(header, value) {
   return fn ? fn(value) : (value ?? "");
 }
 // ----------------------------------------------------------
+
+// ---- Sorting: latest first by ISO 8601 Timestamp ----
+function sortByTimestamp(headers, rows) {
+  const ix = headers.indexOf("Timestamp");
+  if (ix === -1) return rows;
+  // Return a new array sorted desc; robust to blanks.
+  return [...rows].sort((a, b) => {
+    const ta = Date.parse(a[ix]); // NaN if invalid
+    const tb = Date.parse(b[ix]);
+    const aOK = Number.isFinite(ta), bOK = Number.isFinite(tb);
+    if (aOK && bOK) return tb - ta;      // newest first
+    if (aOK && !bOK) return -1;
+    if (!aOK && bOK) return 1;
+    return 0;
+  });
+}
+// -----------------------------------------------------
 
 async function init() {
   await refreshAll();
@@ -101,8 +118,10 @@ function toggleActive(el, on) { el.classList.toggle("active", on); }
 
 async function refreshAll(isManualClick=false) {
   const [auto, manual] = await Promise.all([fetchCsv("/auto.csv"), fetchCsv("/manual.csv")]);
-  model.headers.auto = auto.headers; model.rows.auto = auto.rows;
-  model.headers.manual = manual.headers; model.rows.manual = manual.rows;
+  model.headers.auto  = auto.headers;
+  model.headers.manual= manual.headers;
+  model.rows.auto     = sortByTimestamp(auto.headers,   auto.rows);
+  model.rows.manual   = sortByTimestamp(manual.headers, manual.rows);
   if (isManualClick) console.log("[viewer] refresh triggered");
   render();
 }
@@ -137,10 +156,10 @@ function cardsHtml(kind, headers, rows) {
   if (!headers.length) return "<div class='muted'>No data.</div>";
   const ix = indexMap(headers);
   const cards = rows.map(row => {
-    const ts = row[ix["Timestamp"]] ?? "";
+    const ts  = row[ix["Timestamp"]] ?? "";
     const obs = row[ix["Observations"]] ?? "";
-    const crew = row[ix["Crew"]] ?? "";
-    const prop = row[ix["Propulsion"]] ?? "";
+    const crew= row[ix["Crew"]] ?? "";
+    const prop= row[ix["Propulsion"]] ?? "";
     const sog = row[ix["SOG (kt)"]] ?? "";    // shown as-is
     const tws = row[ix["TWS (kt)"]] ?? "";    // shown as-is
     const cog = row[ix["COG (°T)"]] ?? "";    // shown as-is
@@ -169,7 +188,6 @@ function indexMap(headers) {
 }
 
 // --- CSV fetch & parse (simple, handles quotes) ---
-
 async function fetchCsv(url) {
   try {
     const res = await fetch(url, { cache: "no-store" });
@@ -202,9 +220,7 @@ function parseCsv(text) {
       field += c;
     }
   }
-  // trailing field
   if (field.length || row.length) { pushField(); pushRow(); }
-  // first row = header
   const headers = rows.shift() ?? [];
   return { headers, rows };
 }
