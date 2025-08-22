@@ -14,7 +14,6 @@
       "environment.inside.humidity",
       "navigation.pitch",
       "navigation.roll"
-      /* GPS/AIS/Seatalk fields will appear when the bridge is connected */
     ]
   },
   "exports": {
@@ -23,6 +22,6 @@
   },
   "viewer": {
     "auto_refresh_sec": 3600,
-    "local_base_url": "http://localhost:8080"
+    "local_base_url": "http://localhost:8081"
   }
 }

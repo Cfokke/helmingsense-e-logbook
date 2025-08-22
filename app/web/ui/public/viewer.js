@@ -24,22 +24,57 @@ let model = {
   headers: { auto: [], manual: [] },
   autoRefreshSec: 3600,
   timer: null
-  liveCols: new Set()
 };
+
+// --------- Formatting rules (exact per your spec) ----------
+const FORMATTERS = {
+  "Temp (°C)":   (v) => formatFixed(v, 1),
+  "Dew (°C)":    (v) => formatFixed(v, 1),
+  "Hum (%)":     (v) => formatInt(v),
+  "Pres (mbar)": (v) => formatInt(v),
+  "Pitch (°)":   (v) => formatInt(v),
+  "Roll (°)":    (v) => formatInt(v),
+};
+// Only formats listed headers; everything else is shown exactly as-is.
+function formatFixed(v, dp) {
+  if (v == null || v === "") return "";
+  const n = Number(v);
+  if (!Number.isFinite(n)) return String(v);
+  return n.toFixed(dp);
+}
+function formatInt(v) {
+  if (v == null || v === "") return "";
+  const n = Number(v);
+  if (!Number.isFinite(n)) return String(v);
+  return String(Math.round(n));
+}
+function formatValue(header, value) {
+  const fn = FORMATTERS[header];
+  return fn ? fn(value) : (value ?? "");
+}
+// ----------------------------------------------------------
+
+// ---- Sorting: latest first by ISO 8601 Timestamp ----
+function sortByTimestamp(headers, rows) {
+  const ix = headers.indexOf("Timestamp");
+  if (ix === -1) return rows;
+  // Return a new array sorted desc; robust to blanks.
+  return [...rows].sort((a, b) => {
+    const ta = Date.parse(a[ix]); // NaN if invalid
+    const tb = Date.parse(b[ix]);
+    const aOK = Number.isFinite(ta), bOK = Number.isFinite(tb);
+    if (aOK && bOK) return tb - ta;      // newest first
+    if (aOK && !bOK) return -1;
+    if (!aOK && bOK) return 1;
+    return 0;
+  });
+}
+// -----------------------------------------------------
 
 async function init() {
   await refreshAll();
-  try {
-    const live = await (await fetch("/liveness.json", { cache: "no-store" })).json();
-    model.liveCols = new Set(live?.live || []);
-  } catch { model.liveCols = new Set(); }
   wireUI();
-  // Ask the backend what the interval is by peeking at index logs (we can’t read config directly in the browser)
-  // We’ll just display the default we use server-side if UI doesn’t know precisely:
-  try {
-    // If you later expose a /meta endpoint, update this. For now show a sensible default.
-    model.autoRefreshSec = 3600;
-  } catch {}
+  try { model.autoRefreshSec = 3600; } catch {}
   ui.autoInterval.textContent = `${model.autoRefreshSec}s`;
   scheduleAutoRefresh();
 }
@@ -63,14 +98,11 @@ function wireUI() {
 }
 
 function syncUI() {
-  // tabs
   toggleActive(ui.tabAuto, model.tab === "auto");
   toggleActive(ui.tabManual, model.tab === "manual");
-  // view
   toggleActive(ui.viewTable, model.view === "table");
   toggleActive(ui.viewCards, model.view === "cards");
 
-  // visibility
   const isAuto = model.tab === "auto";
   const isTable = model.view === "table";
   show(ui.autoTable,  isAuto && isTable);
@@ -78,7 +110,6 @@ function syncUI() {
   show(ui.manualTable,!isAuto && isTable);
   show(ui.manualCards,!isAuto && !isTable);
 
-  // render
   render();
 }
 
@@ -87,8 +118,10 @@ function toggleActive(el, on) { el.classList.toggle("active", on); }
 
 async function refreshAll(isManualClick=false) {
   const [auto, manual] = await Promise.all([fetchCsv("/auto.csv"), fetchCsv("/manual.csv")]);
-  model.headers.auto = auto.headers; model.rows.auto = auto.rows;
-  model.headers.manual = manual.headers; model.rows.manual = manual.rows;
+  model.headers.auto  = auto.headers;
+  model.headers.manual= manual.headers;
+  model.rows.auto     = sortByTimestamp(auto.headers,   auto.rows);
+  model.rows.manual   = sortByTimestamp(manual.headers, manual.rows);
   if (isManualClick) console.log("[viewer] refresh triggered");
   render();
 }
@@ -111,39 +144,39 @@ function tableHtml(headers, rows) {
   if (!headers.length) return "<div class='muted'>No data.</div>";
   const head = `<tr>${headers.map(h=>`<th>${escapeHtml(h)}</th>`).join("")}</tr>`;
   const body = rows.map(r => `<tr>${
-  r.map((v,i)=>{
-    const h = headers[i];
-    const live = model.liveCols.has(h);
-    const display = (v === null || v === "" || v === undefined) ? "—" : v;
-    const cls = live ? "" : "stale";
-    return `<td class="${cls}">${escapeHtml(display)}</td>`;
-  }).join("")
-}</tr>`).join("");
+    r.map((v,i) => {
+      const display = formatValue(headers[i], v);
+      return `<td>${escapeHtml(display)}</td>`;
+    }).join("")
+  }</tr>`).join("");
   return `<div style="overflow:auto; max-height:70vh"><table>${head}${body}</table></div>`;
 }
 
 function cardsHtml(kind, headers, rows) {
   if (!headers.length) return "<div class='muted'>No data.</div>";
-  // Show a compact subset prominently; everything else as small rows.
-  // Choose some meaningful highlights:
   const ix = indexMap(headers);
   const cards = rows.map(row => {
-    const ts = row[ix["Timestamp"]] ?? "";
+    const ts  = row[ix["Timestamp"]] ?? "";
     const obs = row[ix["Observations"]] ?? "";
-    const crew = row[ix["Crew"]] ?? "";
-    const prop = row[ix["Propulsion"]] ?? "";
-    const sog = row[ix["SOG (kt)"]] ?? "";
-    const tws = row[ix["TWS (kt)"]] ?? "";
-    const cog = row[ix["COG (°T)"]] ?? "";
+    const crew= row[ix["Crew"]] ?? "";
+    const prop= row[ix["Propulsion"]] ?? "";
+    const sog = row[ix["SOG (kt)"]] ?? "";    // shown as-is
+    const tws = row[ix["TWS (kt)"]] ?? "";    // shown as-is
+    const cog = row[ix["COG (°T)"]] ?? "";    // shown as-is
     const tagClass = kind === "auto" ? "tag-auto" : "tag-manual";
 
     const mini = headers.map((h,i)=>{
-  const live = model.liveCols.has(h);
-  const val = row[i];
-  const display = (val === null || val === "" || val === undefined) ? "—" : val;
-  const cls = live ? "" : "stale";
-  return `<div class="${cls}"><span class="muted">${escapeHtml(h)}:</span> ${escapeHtml(display)}</div>`;
-}).join("");
+      const val = formatValue(h, row[i]);
+      return `<div><span class="muted">${escapeHtml(h)}:</span> ${escapeHtml(val)}</div>`;
+    }).join("");
+
+    return `<div class="card ${tagClass}">
+      <div><strong>${escapeHtml(ts)}</strong></div>
+      <div class="muted">Crew ${escapeHtml(crew)} • ${escapeHtml(prop)} • SOG ${escapeHtml(sog)} kt • TWS ${escapeHtml(tws)} kt • COG ${escapeHtml(cog)}°</div>
+      <div style="margin:6px 0">${escapeHtml(obs)}</div>
+      <details><summary class="muted">Show all</summary>${mini}</details>
+    </div>`;
+  }).join("");
 
   return `<div class="cards">${cards}</div>`;
 }
@@ -155,7 +188,6 @@ function indexMap(headers) {
 }
 
 // --- CSV fetch & parse (simple, handles quotes) ---
-
 async function fetchCsv(url) {
   try {
     const res = await fetch(url, { cache: "no-store" });
@@ -188,9 +220,7 @@ function parseCsv(text) {
       field += c;
     }
   }
-  // trailing field
   if (field.length || row.length) { pushField(); pushRow(); }
-  // first row = header
   const headers = rows.shift() ?? [];
   return { headers, rows };
 }

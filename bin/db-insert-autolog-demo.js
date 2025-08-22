@@ -3,17 +3,25 @@ import { loadConfig } from "../app/utils/config/load.js";
 import { insertAutolog } from "../app/services/autolog/store_db.js";
 
 const { config } = loadConfig();
-const now = new Date();
-const ts = `${now.getUTCFullYear()}-${String(now.getUTCMonth()+1).padStart(2,"0")}-${String(now.getUTCDate()).padStart(2,"0")}T${String(now.getUTCHours()).padStart(2,"0")}:${String(now.getUTCMinutes()).padStart(2,"0")}Z`;
+
+function nowNoSecondsUtc() {
+  const d = new Date();
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth()+1).padStart(2,"0");
+  const dd = String(d.getUTCDate()).padStart(2,"0");
+  const hh = String(d.getUTCHours()).padStart(2,"0");
+  const mi = String(d.getUTCMinutes()).padStart(2,"0");
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}Z`;
+}
 
 const row = {
-  "Timestamp": ts,
+  "Timestamp": nowNoSecondsUtc(),
   "Crew": "No entry",
   "Autopilot": "No entry",
-  "Propulsion": "No entry",
-  "Visibility": "No entry",
-  "Sea_state": "No entry",
-  "Observations": "demo insert",
+  "Propulsion": "sailing",
+  "Visibility": "good",
+  "Sea_state": "slight",
+  "Observations": "demo insert (plural tables)",
   "Lat": null, "Lon": null, "COG (°T)": null, "HdgMag (°)": null, "HdgTrue (°)": null,
   "SOG (kt)": null, "AWS (kt)": null, "TWS (kt)": null, "TWD (°T)": null,
   "Temp (°C)": null, "Pres (mbar)": null, "Dew (°C)": null, "Hum (%)": null,
