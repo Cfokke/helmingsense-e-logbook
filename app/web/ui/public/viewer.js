@@ -1,6 +1,8 @@
 // app/web/ui/public/viewer.js
-// Fetches /auto.csv and /manual.csv, parses minimal CSV, renders table or cards.
-// No dependencies.
+// Fetches /auto.csv and /manual.csv (server maps to *_log.csv), parses CSV,
+// renders table or cards, and marks stale cells per column using staleness.js.
+
+import { markStale } from "./staleness.js";
 
 const ui = {
   tabAuto: document.getElementById("tab-auto"),
@@ -35,7 +37,6 @@ const FORMATTERS = {
   "Pitch (°)":   (v) => formatInt(v),
   "Roll (°)":    (v) => formatInt(v),
 };
-// Only formats listed headers; everything else is shown exactly as-is.
 function formatFixed(v, dp) {
   if (v == null || v === "") return "";
   const n = Number(v);
@@ -58,12 +59,11 @@ function formatValue(header, value) {
 function sortByTimestamp(headers, rows) {
   const ix = headers.indexOf("Timestamp");
   if (ix === -1) return rows;
-  // Return a new array sorted desc; robust to blanks.
   return [...rows].sort((a, b) => {
-    const ta = Date.parse(a[ix]); // NaN if invalid
+    const ta = Date.parse(a[ix]);
     const tb = Date.parse(b[ix]);
     const aOK = Number.isFinite(ta), bOK = Number.isFinite(tb);
-    if (aOK && bOK) return tb - ta;      // newest first
+    if (aOK && bOK) return tb - ta;
     if (aOK && !bOK) return -1;
     if (!aOK && bOK) return 1;
     return 0;
@@ -117,11 +117,26 @@ function show(el, on) { el.classList.toggle("hidden", !on); }
 function toggleActive(el, on) { el.classList.toggle("active", on); }
 
 async function refreshAll(isManualClick=false) {
-  const [auto, manual] = await Promise.all([fetchCsv("/auto.csv"), fetchCsv("/manual.csv")]);
-  model.headers.auto  = auto.headers;
-  model.headers.manual= manual.headers;
-  model.rows.auto     = sortByTimestamp(auto.headers,   auto.rows);
-  model.rows.manual   = sortByTimestamp(manual.headers, manual.rows);
+  const [auto, manual] = await Promise.all([
+    fetchCsv("/auto.csv"),
+    fetchCsv("/manual.csv")
+  ]);
+
+  if (!auto.headers.length && !manual.headers.length) {
+    console.warn("[viewer] No headers from both CSVs. Check server mapping and dataDir.");
+  }
+  if (!auto.rows.length) console.warn("[viewer] /auto.csv returned 0 data rows.");
+  if (!manual.rows.length) console.warn("[viewer] /manual.csv returned 0 data rows.");
+
+  model.headers.auto   = auto.headers;
+  model.headers.manual = manual.headers;
+
+  // Sort, then compute staleness per column (returns copies of the rows with _stale mask)
+  const sortedAuto   = sortByTimestamp(auto.headers,   auto.rows);
+  const sortedManual = sortByTimestamp(manual.headers, manual.rows);
+  model.rows.auto    = markStale(auto.headers,   sortedAuto);
+  model.rows.manual  = markStale(manual.headers, sortedManual);
+
   if (isManualClick) console.log("[viewer] refresh triggered");
   render();
 }
@@ -146,7 +161,9 @@ function tableHtml(headers, rows) {
   const body = rows.map(r => `<tr>${
     r.map((v,i) => {
       const display = formatValue(headers[i], v);
-      return `<td>${escapeHtml(display)}</td>`;
+      const stale = Array.isArray(r._stale) ? r._stale[i] : false;
+      const cls = stale ? "stale" : "";
+      return `<td class="${cls}">${escapeHtml(display)}</td>`;
     }).join("")
   }</tr>`).join("");
   return `<div style="overflow:auto; max-height:70vh"><table>${head}${body}</table></div>`;
@@ -160,14 +177,16 @@ function cardsHtml(kind, headers, rows) {
     const obs = row[ix["Observations"]] ?? "";
     const crew= row[ix["Crew"]] ?? "";
     const prop= row[ix["Propulsion"]] ?? "";
-    const sog = row[ix["SOG (kt)"]] ?? "";    // shown as-is
-    const tws = row[ix["TWS (kt)"]] ?? "";    // shown as-is
-    const cog = row[ix["COG (°T)"]] ?? "";    // shown as-is
+    const sog = row[ix["SOG (kt)"]] ?? "";
+    const tws = row[ix["TWS (kt)"]] ?? "";
+    const cog = row[ix["COG (°T)"]] ?? "";
     const tagClass = kind === "auto" ? "tag-auto" : "tag-manual";
 
     const mini = headers.map((h,i)=>{
       const val = formatValue(h, row[i]);
-      return `<div><span class="muted">${escapeHtml(h)}:</span> ${escapeHtml(val)}</div>`;
+      const stale = Array.isArray(row._stale) ? row._stale[i] : false;
+      const cls = stale ? "stale" : "";
+      return `<div class="${cls}"><span class="muted">${escapeHtml(h)}:</span> ${escapeHtml(val)}</div>`;
     }).join("");
 
     return `<div class="card ${tagClass}">
@@ -191,16 +210,19 @@ function indexMap(headers) {
 async function fetchCsv(url) {
   try {
     const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) return { headers: [], rows: [] };
+    if (!res.ok) {
+      console.warn("[viewer] fetch failed:", url, res.status, res.statusText);
+      return { headers: [], rows: [] };
+    }
     const text = await res.text();
     if (!text.trim()) return { headers: [], rows: [] };
     return parseCsv(text);
-  } catch {
+  } catch (e) {
+    console.warn("[viewer] fetch error:", url, e);
     return { headers: [], rows: [] };
   }
 }
 
-// Minimal CSV parser for RFC4180-ish CSV
 function parseCsv(text) {
   const rows = [];
   let row = [], field = "", inQuotes = false;
