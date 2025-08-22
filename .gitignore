@@ -1,3 +1,25 @@
-data/
-data/
+# ---- Runtime data (should never be versioned) ----
+data/*.csv
+data/*.sqlite3
+
+# UI viewer runtime CSV copies
 app/web/ui/public/*.csv
+
+# Logs
+*.log
+
+# Node modules and build artifacts
+node_modules/
+dist/
+build/
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Local archives/backups
+*.tar.gz
+*.zip
