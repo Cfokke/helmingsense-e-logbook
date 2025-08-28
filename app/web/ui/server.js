@@ -1,6 +1,6 @@
 // app/web/ui/server.js
-// Tiny local viewer: serves index.html + viewer modules, and proxies CSVs from config.exports.dir.
-// No dependencies.
+// Tiny local viewer: serves UI from app/web/ui/public and CSVs from config.exports.dir.
+// Now with a generic static route for ANY file under /public, plus explicit CSV routes.
 
 import http from "node:http";
 import fs from "node:fs";
@@ -19,12 +19,24 @@ function serveFile(res, filePath, contentType) {
     send(res, 200, { "content-type": contentType }, data);
   } catch (e) {
     if (e.code === "ENOENT") {
-      // If a public asset is missing, serve 404 to surface the problem clearly.
       send(res, 404, { "content-type": "text/plain; charset=utf-8" }, "Not found");
     } else {
       send(res, 500, { "content-type": "text/plain; charset=utf-8" }, "Server error");
     }
   }
+}
+
+function contentTypeFor(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === ".html") return "text/html; charset=utf-8";
+  if (ext === ".js")   return "text/javascript; charset=utf-8";
+  if (ext === ".css")  return "text/css; charset=utf-8";
+  if (ext === ".csv")  return "text/csv; charset=utf-8";
+  if (ext === ".json") return "application/json; charset=utf-8";
+  if (ext === ".svg")  return "image/svg+xml";
+  if (ext === ".png")  return "image/png";
+  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
+  return "application/octet-stream";
 }
 
 function serveCsv(res, filePath) {
@@ -33,7 +45,7 @@ function serveCsv(res, filePath) {
     send(res, 200, { "content-type": "text/csv; charset=utf-8" }, data);
   } catch (e) {
     if (e.code === "ENOENT") {
-      // For CSVs, keep the old behavior: empty body (valid CSV with no rows) rather than 404.
+      // Return empty CSV for graceful UX
       send(res, 200, { "content-type": "text/csv; charset=utf-8" }, "");
     } else {
       send(res, 500, { "content-type": "text/plain; charset=utf-8" }, "Server error");
@@ -41,12 +53,15 @@ function serveCsv(res, filePath) {
   }
 }
 
-function csvPath(dir, base) {
-  return path.join(dir, base);
+function safeJoin(baseDir, reqPath) {
+  const cleaned = reqPath.replace(/^\/+/, ""); // drop leading slashes
+  const p = path.normalize(path.join(baseDir, cleaned));
+  if (!p.startsWith(baseDir)) return null;     // prevent path escape
+  return p;
 }
 
 function start() {
-  const { config, error } = loadConfig();
+  const { config } = loadConfig();
   const { ok, errors } = validateConfig(config);
   if (!ok) {
     console.error("Invalid config:", errors);
@@ -66,30 +81,41 @@ function start() {
   const dataDir = config.exports.dir;
 
   const server = http.createServer((req, res) => {
-    // Public assets
-    if (req.method === "GET" && (req.url === "/" || req.url === "/index.html")) {
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const p = url.pathname;
+
+    // CSV routes (explicit)
+    if (req.method === "GET" && p === "/auto.csv") {
+      return serveCsv(res, path.join(dataDir, "auto_log.csv"));
+    }
+    if (req.method === "GET" && p === "/manual.csv") {
+      return serveCsv(res, path.join(dataDir, "manual_log.csv"));
+    }
+    if (req.method === "GET" && p === "/data/merged_log.csv") {
+      return serveCsv(res, path.join(dataDir, "merged_log.csv"));
+    }
+    if (req.method === "GET" && p === "/data/merged_log_with_type.csv") {
+      return serveCsv(res, path.join(dataDir, "merged_log_with_type.csv"));
+    }
+
+    // Root → index.html
+    if (req.method === "GET" && (p === "/" || p === "/index.html")) {
       return serveFile(res, path.join(staticDir, "index.html"), "text/html; charset=utf-8");
     }
-    if (req.method === "GET" && req.url === "/viewer.js") {
-      return serveFile(res, path.join(staticDir, "viewer.js"), "text/javascript; charset=utf-8");
-    }
-    if (req.method === "GET" && req.url === "/staleness.js") {
-      return serveFile(res, path.join(staticDir, "staleness.js"), "text/javascript; charset=utf-8");
+
+    // Generic static: serve ANY file under app/web/ui/public
+    if (req.method === "GET") {
+      const candidate = safeJoin(staticDir, p);
+      if (candidate && fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+        return serveFile(res, candidate, contentTypeFor(candidate));
+      }
     }
 
-    // CSV routes (map to exports dir)
-    if (req.method === "GET" && req.url === "/auto.csv") {
-      return serveCsv(res, csvPath(dataDir, "auto_log.csv"));
-    }
-    if (req.method === "GET" && req.url === "/manual.csv") {
-      return serveCsv(res, csvPath(dataDir, "manual_log.csv"));
-    }
-
-    send(res, 404, { "content-type": "text/plain; charset=utf-8" }, "Not found");
+    return send(res, 404, { "content-type": "text/plain; charset=utf-8" }, "Not found");
   });
 
   server.on("listening", () => {
-    console.log(`[viewer] http://localhost:${uiPort}/  (serving CSVs from ${dataDir})`);
+    console.log(`[viewer] http://localhost:${uiPort}/  (serving /public and CSVs from ${dataDir})`);
     console.log(`[viewer] auto refresh interval (sec): ${config.viewer.auto_refresh_sec}`);
   });
 

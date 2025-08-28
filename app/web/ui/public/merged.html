@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>HelmingSense — Merged Log (Step 4: Print & Export)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg-auto:   #eaf6ee; /* light green */
+      --bg-manual: #fbeaea; /* light red  */
+      --border:    #ddd;
+      --headbg:    #fafafa;
+      --muted:     #666;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111;background:#fff}
+    header{position:sticky;top:0;background:#f7f7f9;border-bottom:1px solid var(--border);padding:10px}
+    .bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    h1{margin:0 8px 0 0;font-size:16px}
+    .btn{appearance:none;border:1px solid #ccc;background:#f7f7f7;border-radius:6px;padding:6px 10px;cursor:pointer}
+    .btn:disabled{opacity:.6;cursor:default}
+    .muted{color:var(--muted);font-size:12px;margin-left:auto}
+    .filters{display:flex;gap:12px;align-items:center}
+    main{padding:12px}
+    .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:8px}
+    table{border-collapse:collapse;width:100%;min-width:1100px;background:#fff}
+    thead th{position:sticky;top:0;background:var(--headbg);border-bottom:1px solid var(--border);padding:8px;text-align:left;font-weight:600}
+    tbody td{border-bottom:1px solid #eee;padding:6px 8px;white-space:nowrap}
+
+    /* Row tints */
+    tbody tr.row-auto   { background: var(--bg-auto); }
+    tbody tr.row-manual { background: var(--bg-manual); }
+
+    /* Filtering */
+    tbody tr.is-hidden { display:none; }
+
+    /* --- Print styles --- */
+    @media print {
+      /* keep colors (row tints) */
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      @page { size: A4 landscape; margin: 10mm; }
+
+      header, .no-print { display:none !important; }
+
+      body{margin:0;background:#fff}
+      main{padding:0}
+
+      table{font-size:11px}
+      thead th{
+        position:static;              /* for print */
+        display:table-cell;
+        background:var(--headbg);
+        border-bottom:1px solid var(--border);
+        padding:6px 6px;
+      }
+      thead{ display: table-header-group; } /* repeat header on each page */
+      tfoot{ display: table-footer-group; } /* allow footer if needed */
+
+      tbody td{padding:5px 6px;border-bottom:1px solid #eee}
+      .table-wrap{border:none;border-radius:0;overflow:visible}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="bar">
+      <h1>HelmingSense — Merged Log</h1>
+      <div class="filters">
+        <label><input type="checkbox" id="showAuto"   checked> Show autologs</label>
+        <label><input type="checkbox" id="showManual" checked> Show manuals</label>
+      </div>
+      <button id="refresh" class="btn">Refresh</button>
+      <a id="downloadCsv" class="btn" href="/data/merged_log_with_type.csv" download>Download CSV</a>
+      <button id="printBtn" class="btn">Print</button>
+      <span id="status" class="muted">loading…</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="table-wrap">
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Position</th>
+            <th>COG/SOG</th>
+            <th>HdgMag/HdgTrue</th>
+            <th>AWS/TWS/TWD</th>
+            <th>Temp/Pres/Hum</th>
+            <th>Pitch/Roll</th>
+            <th>Crew</th>
+            <th>APilot</th>
+            <th>Prop</th>
+            <th>Vis</th>
+            <th>Sea</th>
+            <th>Observations</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="no-print" style="margin-top:8px;color:var(--muted);font-size:12px">
+      Tip: Use the checkboxes to include/exclude Autologs/Manuals before printing.
+    </div>
+  </main>
+
+  <script>
+  // minimal CSV parser (handles quotes)
+  function parseCSV(text){
+    const rows=[]; let i=0, f='', row=[], q=false;
+    while(i<text.length){
+      const c=text[i++];
+      if(q){
+        if(c === '"'){ if(text[i] === '"'){ f+='"'; i++; } else q=false; }
+        else f+=c;
+      }else{
+        if(c === '"') q=true;
+        else if(c === ','){ row.push(f); f=''; }
+        else if(c === '\n'){ row.push(f); rows.push(row); row=[]; f=''; }
+        else if(c !== '\r'){ f+=c; }
+      }
+    }
+    if(f.length || row.length){ row.push(f); rows.push(row); }
+    return rows;
+  }
+
+  const tbody      = document.getElementById('tbody');
+  const statusEl   = document.getElementById('status');
+  const btn        = document.getElementById('refresh');
+  const cbAuto     = document.getElementById('showAuto');
+  const cbManual   = document.getElementById('showManual');
+  const printBtn   = document.getElementById('printBtn');
+
+  // persist toggle state
+  function loadPrefs(){
+    try{
+      const p = JSON.parse(localStorage.getItem('merged_toggles') || '{}');
+      if (typeof p.showAuto === 'boolean')   cbAuto.checked   = p.showAuto;
+      if (typeof p.showManual === 'boolean') cbManual.checked = p.showManual;
+    }catch{}
+  }
+  function savePrefs(){
+    localStorage.setItem('merged_toggles', JSON.stringify({
+      showAuto: cbAuto.checked,
+      showManual: cbManual.checked
+    }));
+  }
+
+  function applyFilter(){
+    const showA = cbAuto.checked;
+    const showM = cbManual.checked;
+    let visible = 0, total = 0;
+    for (const tr of tbody.querySelectorAll('tr')) {
+      total++;
+      const isAuto   = tr.classList.contains('row-auto');
+      const isManual = tr.classList.contains('row-manual');
+      const show = (isAuto && showA) || (isManual && showM) || (!isAuto && !isManual);
+      tr.classList.toggle('is-hidden', !show);
+      if (show) visible++;
+    }
+    statusEl.textContent = `loaded ${total} rows • showing ${visible} • ${new Date().toUTCString()}`;
+    savePrefs();
+  }
+
+  function render(rows){
+    // rows[0] is header from CSV (includes "Type" as first col)
+    const [hdr, ...data] = rows;
+    const idxType = hdr.indexOf('Type');
+
+    const columns = ["Time","Position","COG/SOG","HdgMag/HdgTrue","AWS/TWS/TWD","Temp/Pres/Hum","Pitch/Roll","Crew","APilot","Prop","Vis","Sea","Observations"];
+    const colIdx = Object.fromEntries(columns.map(h => [h, hdr.indexOf(h)]));
+
+    tbody.innerHTML = '';
+    for(const r of data){
+      if(!r || !r.some(x => x && x.trim() !== '')) continue;
+
+      const type = (idxType >= 0 ? (r[idxType] || '').toLowerCase() : '');
+      const tr = document.createElement('tr');
+      tr.className = type === 'manual' ? 'row-manual'
+                 : type === 'auto'   ? 'row-auto'
+                 : '';
+
+      for(const h of columns){
+        const td = document.createElement('td');
+        const j = colIdx[h];
+        td.textContent = j >= 0 ? (r[j] ?? '') : '';
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+    applyFilter(); // apply current toggles after every load
+  }
+
+  async function load(){
+    try{
+      statusEl.textContent = 'loading…';
+      btn.disabled = true;
+      const res = await fetch('/data/merged_log_with_type.csv', { cache: 'no-store' });
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const text = await res.text();
+      const rows = parseCSV(text);
+      render(rows);
+    }catch(e){
+      console.error(e);
+      statusEl.textContent = 'failed to load';
+    }finally{
+      btn.disabled = false;
+    }
+  }
+
+  // Print
+  printBtn.addEventListener('click', () => {
+    // Stamp a small footer in the console for traceability (optional)
+    console.log('Printed at', new Date().toUTCString());
+    window.print();
+  });
+
+  // init
+  loadPrefs();
+  cbAuto.addEventListener('change', applyFilter);
+  cbManual.addEventListener('change', applyFilter);
+  btn.addEventListener('click', load);
+  load();
+  setInterval(load, 60000); // auto refresh every 60s
+  </script>
+</body>
+</html>
