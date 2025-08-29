@@ -1,0 +1,118 @@
+/* HelmingSense shared UI (nautical) — tiny design system
+   Safe to use across merged + manual pages. */
+
+:root{
+  --navy: #062a4f;
+  --navy-deep: #041c33;
+  --gold: #d7b24a;
+  --panel: #f7f7f5;
+  --border: #d8d8d8;
+  --text: #0f1720;
+
+  --radius: 12px;
+  --shadow: 0 4px 20px rgba(0,0,0,.08);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font: 14px/1.45 system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text);
+  background: linear-gradient(180deg, #ffffff 0%, #f4f7fb 100%);
+}
+
+/* Top bar (optional) */
+.hs-topbar {
+  position: sticky; top: 0;
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  padding: 10px 12px;
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  z-index: 20;
+}
+.hs-topbar h1 { margin: 0 6px 0 2px; font-size: 16px; }
+.hs-topbar .muted { color: #666; font-size: 12px; margin-left: auto; }
+
+/* Buttons */
+.hs-btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--text);
+}
+.hs-btn.primary {
+  border-color: var(--navy);
+  background: var(--navy);
+  color: #fff;
+}
+.hs-btn:hover { filter: brightness(0.98); }
+.hs-btn:disabled { opacity: .6; cursor: default; }
+
+/* Page container (centered “kiosk” card) */
+.hs-page {
+  min-height: calc(100% - 52px);
+  display: grid;
+  place-items: start center;
+  padding: 24px 12px 40px;
+}
+.hs-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+/* Form */
+.hs-form .row { margin-bottom: 12px; }
+.hs-form label { display: block; font-weight: 600; margin-bottom: 6px; }
+.hs-input, .hs-select, .hs-textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  padding: 10px 12px;
+  font: inherit;
+}
+.hs-textarea {
+  min-height: 96px;
+  resize: vertical; /* grows nicely on iPhone */
+}
+
+/* Table shell (for merged page) */
+.hs-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+.hs-table { border-collapse: collapse; width: 100%; min-width: 1100px; }
+.hs-table thead th {
+  position: sticky; top: 0;
+  background: #fafafa;
+  border-bottom: 1px solid var(--border);
+  padding: 8px; text-align: left; font-weight: 600;
+}
+.hs-table tbody td { border-bottom: 1px solid #eee; padding: 6px 8px; white-space: nowrap; }
+
+/* Row tints (unchanged semantics) */
+.row-auto   { background: #eaf6ee; } /* light green */
+.row-manual { background: #fbeaea; } /* light red  */
+
+@media print {
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  @page { size: A4 landscape; margin: 10mm; }
+  .hs-topbar, .no-print { display: none !important; }
+  body { background: #fff; }
+  .hs-card, .hs-table-wrap { border: none; box-shadow: none; border-radius: 0; }
+  .hs-table thead th { position: static; }
+  .hs-table thead { display: table-header-group; }
+  .hs-table tbody td { padding: 5px 6px; }
+}

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>HelmingSense — Manual Log Entry</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Icons (you already copied these into /app/services/manual/public/) -->
+  <link rel="icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="/favicon.png">
+
+  <!-- Shared nautical theme (you copied helming.css to /public/css/) -->
+  <link rel="stylesheet" href="/css/helming.css?v=3">
+
+  <style>
+    /* Page shell */
+    body { margin: 0; background: #f5f7fb; }
+    header {
+      position: sticky; top: 0; z-index: 10;
+      background: #ffffffcc; backdrop-filter: blur(3px);
+      border-bottom: 1px solid #e2e6ef; padding: 10px 14px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    header h1 { margin: 0; font-size: 16px; }
+    header .spacer { flex: 1; }
+
+    /* Centered narrow “kiosk” card */
+    .wrap {
+      max-width: 520px; margin: 18px auto; padding: 0 12px;
+    }
+    .card {
+      background: #fff; border: 1px solid #e2e6ef; border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.04);
+      padding: 16px;
+    }
+
+    /* Form grid (single column; predictable tap targets on phone) */
+    form { display: grid; gap: 12px; }
+    .row { display: grid; gap: 6px; }
+
+    label { font-weight: 600; font-size: 14px; }
+    .help { color: #667; font-size: 12px; }
+
+    select, input[type="text"], textarea, button {
+      width: 100%;
+      border: 1px solid #ccd3df; border-radius: 8px;
+      padding: 8px 10px; font: inherit; background: #fff;
+    }
+    select:focus, input:focus, textarea:focus { outline: none; border-color: #6aa6ff; box-shadow: 0 0 0 3px rgba(106,166,255,.20); }
+
+    textarea { min-height: 100px; resize: vertical; line-height: 1.35; }
+
+    .actions { display: flex; gap: 10px; align-items: center; }
+    .btn-primary {
+      background: #0b67ff; color: #fff; border-color: #0b67ff; cursor: pointer;
+    }
+    .btn-primary:hover { filter: brightness(1.05); }
+    .btn-muted { background: #f3f5f9; cursor: pointer; }
+
+    .hint { color: #667; font-size: 12px; margin-top: 6px; }
+    .ok { color: #0a7a3b; }
+    .err { color: #b00020; }
+
+    /* Small footer */
+    footer {
+      text-align: center; color: #667; font-size: 12px;
+      padding: 10px 0 20px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Manual Log Entry</h1>
+    <span class="spacer"></span>
+    <a class="btn-muted" href="http://localhost:8081/merged.html" style="text-decoration:none;padding:6px 10px;border-radius:8px;border:1px solid #ccd3df;">Back to Merged Log</a>
+  </header>
+
+  <div class="wrap">
+    <div class="card">
+      <!-- NOTE: keep name= attributes exactly as your server expects -->
+      <form method="POST" action="/submit" id="manualForm">
+        <div class="row">
+          <label for="crew">Crew</label>
+          <select id="crew" name="crew" required>
+            <option value="" disabled selected>Select…</option>
+            <option>1</option><option>2</option><option>3</option>
+            <option>4</option><option>5</option><option>6</option>
+            <option>standby</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <label for="autopilot">Autopilot</label>
+          <select id="autopilot" name="autopilot" required>
+            <option value="" disabled selected>Select…</option>
+            <option>off</option><option>standby</option><option>engaged</option>
+            <option>wind</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <label for="propulsion">Propulsion</label>
+          <select id="propulsion" name="propulsion" required>
+            <option value="" disabled selected>Select…</option>
+            <option>sailing</option><option>motor-sailing</option>
+            <option>under engine</option><option>drift</option><option>Heave-to</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <label for="visibility">Visibility</label>
+          <select id="visibility" name="visibility" required>
+            <option value="" disabled selected>Select…</option>
+            <option>excellent</option><option>good</option><option>fair</option>
+            <option>poor</option><option>fog</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <label for="sea_state">Sea state</label>
+          <select id="sea_state" name="sea_state" required>
+            <option value="" disabled selected>Select…</option>
+            <option>smooth</option><option>slight</option><option>moderate</option>
+            <option>rough</option><option>very rough</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <label for="observations">Observations</label>
+          <textarea id="observations" name="observations"
+            placeholder="Free text (e.g., weather change, traffic, sail plan, issues)…"></textarea>
+          <div class="help">Timestamp is recorded automatically (UTC). If exact minute matters, mention it here.</div>
+        </div>
+
+        <div class="actions">
+          <button class="btn-primary" type="submit">Save entry</button>
+          <button class="btn-muted" type="reset">Clear</button>
+          <span id="status" class="hint" aria-live="polite"></span>
+        </div>
+      </form>
+    </div>
+
+    <footer>
+      HelmingSense • E-Logbook
+    </footer>
+  </div>
+
+  <script>
+    // Small UX niceties: show submitting/done/error without touching server code
+    const form = document.getElementById('manualForm');
+    const status = document.getElementById('status');
+    form.addEventListener('submit', () => {
+      status.textContent = 'Submitting…';
+      status.className = 'hint';
+      // Let the server redirect or return the HTML it already does.
+      // If you later return JSON, we can intercept here and stay on-page.
+      setTimeout(() => { status.textContent = ''; }, 4000);
+    });
+  </script>
+</body>
+</html>

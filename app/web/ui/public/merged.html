@@ -2,62 +2,58 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>HelmingSense — Merged Log (Step 4: Print & Export)</title>
+  <title>HelmingSense — Merged Log</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Icons -->
+  <link rel="icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="/favicon.png">
+
+  <!-- Shared nautical theme -->
+  <link rel="stylesheet" href="/css/helming.css?v=3">
+
   <style>
+    /* Local bits (most styling via helming.css) */
     :root{
-      --bg-auto:   #eaf6ee; /* light green */
-      --bg-manual: #fbeaea; /* light red  */
-      --border:    #ddd;
-      --headbg:    #fafafa;
-      --muted:     #666;
+      --bg-auto:#eaf6ee; /* light green */
+      --bg-man:#fbeaea;  /* light red   */
+      --border:#ddd; --head:#fafafa; --muted:#666;
     }
-    *{box-sizing:border-box}
-    body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111;background:#fff}
-    header{position:sticky;top:0;background:#f7f7f9;border-bottom:1px solid var(--border);padding:10px}
-    .bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    body{margin:0}
+    header{position:sticky;top:0;background:var(--head);border-bottom:1px solid var(--border);padding:10px;z-index:20}
+    .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     h1{margin:0 8px 0 0;font-size:16px}
-    .btn{appearance:none;border:1px solid #ccc;background:#f7f7f7;border-radius:6px;padding:6px 10px;cursor:pointer}
+    .btn{appearance:none;border:1px solid #ccc;background:#f7f7f7;border-radius:6px;padding:6px 10px;cursor:pointer;text-decoration:none;color:inherit}
     .btn:disabled{opacity:.6;cursor:default}
-    .muted{color:var(--muted);font-size:12px;margin-left:auto}
-    .filters{display:flex;gap:12px;align-items:center}
+    .muted{margin-left:auto;color:var(--muted);font-size:12px}
     main{padding:12px}
-    .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:8px}
+
+    /* Top + bottom horizontal scrollers (synced) */
+    .scroller {
+      overflow-x: auto;
+      overflow-y: hidden;
+      height: 16px;             /* just a scrollbar track */
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      margin-bottom: 8px;
+    }
+    .scroller-inner { height: 1px; } /* we set width via JS to table scrollWidth */
+
+    .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:8px;background:#fff}
     table{border-collapse:collapse;width:100%;min-width:1100px;background:#fff}
-    thead th{position:sticky;top:0;background:var(--headbg);border-bottom:1px solid var(--border);padding:8px;text-align:left;font-weight:600}
+    thead th{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--border);padding:8px;text-align:left}
     tbody td{border-bottom:1px solid #eee;padding:6px 8px;white-space:nowrap}
 
-    /* Row tints */
-    tbody tr.row-auto   { background: var(--bg-auto); }
-    tbody tr.row-manual { background: var(--bg-manual); }
+    tr.auto   { background: var(--bg-auto); }
+    tr.manual { background: var(--bg-man); }
 
-    /* Filtering */
-    tbody tr.is-hidden { display:none; }
+    .tip{color:var(--muted);font-size:12px;margin:8px 0}
+    .spacer{flex:1}
 
-    /* --- Print styles --- */
     @media print {
-      /* keep colors (row tints) */
-      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      @page { size: A4 landscape; margin: 10mm; }
-
-      header, .no-print { display:none !important; }
-
-      body{margin:0;background:#fff}
-      main{padding:0}
-
-      table{font-size:11px}
-      thead th{
-        position:static;              /* for print */
-        display:table-cell;
-        background:var(--headbg);
-        border-bottom:1px solid var(--border);
-        padding:6px 6px;
-      }
-      thead{ display: table-header-group; } /* repeat header on each page */
-      tfoot{ display: table-footer-group; } /* allow footer if needed */
-
-      tbody td{padding:5px 6px;border-bottom:1px solid #eee}
-      .table-wrap{border:none;border-radius:0;overflow:visible}
+      .scroller { display:none; }
     }
   </style>
 </head>
@@ -65,163 +61,160 @@
   <header>
     <div class="bar">
       <h1>HelmingSense — Merged Log</h1>
-      <div class="filters">
-        <label><input type="checkbox" id="showAuto"   checked> Show autologs</label>
-        <label><input type="checkbox" id="showManual" checked> Show manuals</label>
-      </div>
-      <button id="refresh" class="btn">Refresh</button>
-      <a id="downloadCsv" class="btn" href="/data/merged_log_with_type.csv" download>Download CSV</a>
-      <button id="printBtn" class="btn">Print</button>
-      <span id="status" class="muted">loading…</span>
+
+      <label><input id="f-auto"   type="checkbox" checked> Show autologs</label>
+      <label><input id="f-manual" type="checkbox" checked> Show manuals</label>
+
+      <button id="btn-refresh" class="btn">Refresh</button>
+      <a id="btn-download" class="btn" href="/data/merged_log_with_type.csv" download>Download CSV</a>
+      <button id="btn-print" class="btn" onclick="window.print()">Print</button>
+
+      <span class="spacer"></span>
+
+      <a class="btn" href="http://localhost:8090/" target="_blank" rel="noopener">Manual Entry</a>
+      <span id="loaded" class="muted"></span>
     </div>
   </header>
 
   <main>
-    <div class="table-wrap">
-      <table id="tbl">
+    <!-- NEW: Top scrollbar synced with table below -->
+    <div id="scrollTop" class="scroller">
+      <div id="scrollTopInner" class="scroller-inner"></div>
+    </div>
+
+    <div class="table-wrap" id="tableWrap">
+      <table id="grid">
         <thead>
-          <tr>
-            <th>Time</th>
-            <th>Position</th>
-            <th>COG/SOG</th>
-            <th>HdgMag/HdgTrue</th>
-            <th>AWS/TWS/TWD</th>
-            <th>Temp/Pres/Hum</th>
-            <th>Pitch/Roll</th>
-            <th>Crew</th>
-            <th>APilot</th>
-            <th>Prop</th>
-            <th>Vis</th>
-            <th>Sea</th>
-            <th>Observations</th>
-          </tr>
+          <tr id="thead-row"></tr>
         </thead>
         <tbody id="tbody"></tbody>
       </table>
     </div>
-    <div class="no-print" style="margin-top:8px;color:var(--muted);font-size:12px">
-      Tip: Use the checkboxes to include/exclude Autologs/Manuals before printing.
-    </div>
+
+    <p class="tip">Tip: Use the checkboxes to include/exclude Autolog/Manual rows before printing.</p>
   </main>
 
   <script>
-  // minimal CSV parser (handles quotes)
-  function parseCSV(text){
-    const rows=[]; let i=0, f='', row=[], q=false;
-    while(i<text.length){
-      const c=text[i++];
-      if(q){
-        if(c === '"'){ if(text[i] === '"'){ f+='"'; i++; } else q=false; }
-        else f+=c;
+  (function(){
+    const CSV_URL   = '/data/merged_log_with_type.csv';
+    const tbody     = document.getElementById('tbody');
+    const theadRow  = document.getElementById('thead-row');
+    const loaded    = document.getElementById('loaded');
+    const fAuto     = document.getElementById('f-auto');
+    const fManual   = document.getElementById('f-manual');
+    const btnRefresh= document.getElementById('btn-refresh');
+
+    const wrap      = document.getElementById('tableWrap');
+    const grid      = document.getElementById('grid');
+    const scrollTop = document.getElementById('scrollTop');
+    const scrollTopInner = document.getElementById('scrollTopInner');
+
+    // CSV parser (quoted fields supported)
+    function parseCSV(text){
+      const rows = [];
+      let i=0, field='', row=[], inQ=false;
+      while(i<text.length){
+        const c=text[i++];
+        if(inQ){
+          if(c==='\"'){
+            if(text[i]==='\"'){ field+='"'; i++; }
+            else inQ=false;
+          } else field+=c;
+        }else{
+          if(c==='\"'){ inQ=true; }
+          else if(c===','){ row.push(field); field=''; }
+          else if(c==='\n'){ row.push(field); rows.push(row); field=''; row=[]; }
+          else if(c!=='\r'){ field+=c; }
+        }
+      }
+      if(field!=='' || row.length){ row.push(field); rows.push(row); }
+      return rows;
+    }
+
+    function render(rows){
+      if(!rows || rows.length===0){ tbody.innerHTML=''; theadRow.innerHTML=''; return; }
+      const header = rows[0];
+      const data   = rows.slice(1);
+
+      // Rebuild header (respect CSV order)
+      theadRow.innerHTML = header.map(h=>`<th>${escapeHtml(h)}</th>`).join('');
+
+      const idxType = header.findIndex(h => h.toLowerCase()==='type');
+
+      // Build body
+      const cells = data.map(cols=>{
+        const type = (idxType>=0 ? (cols[idxType]||'').toLowerCase() : '');
+        const cls  = type.startsWith('aut') ? 'auto' : (type.startsWith('man') ? 'manual' : '');
+        const tds  = cols.map(v=>`<td>${escapeHtml(v)}</td>`).join('');
+        return `<tr class="${cls}">${tds}</tr>`;
+      }).join('');
+      tbody.innerHTML = cells;
+
+      applyFilters();
+      loaded.textContent = `loaded ${data.length} rows — ${new Date().toUTCString()}`;
+
+      // After render, size the top scroller to the table width
+      syncTopScrollerWidth();
+    }
+
+    function applyFilters(){
+      const showA = fAuto.checked;
+      const showM = fManual.checked;
+      for(const tr of tbody.querySelectorAll('tr')){
+        const isA = tr.classList.contains('auto');
+        const isM = tr.classList.contains('manual');
+        tr.style.display = (isA && !showA) || (isM && !showM) ? 'none' : '';
+      }
+    }
+
+    function escapeHtml(s){
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    async function load(){
+      try{
+        const res = await fetch(CSV_URL + '?t=' + Date.now(), {cache:'no-store'});
+        if(!res.ok) throw new Error('failed to load');
+        const txt = await res.text();
+        render(parseCSV(txt));
+      }catch(e){
+        loaded.textContent = 'failed to load';
+        tbody.innerHTML = '';
+      }
+    }
+
+    // Top/bottom scrollbar sync
+    let syncing = false;
+    function syncScroll(fromTop){
+      if(syncing) return;
+      syncing = true;
+      if(fromTop){
+        wrap.scrollLeft = scrollTop.scrollLeft;
       }else{
-        if(c === '"') q=true;
-        else if(c === ','){ row.push(f); f=''; }
-        else if(c === '\n'){ row.push(f); rows.push(row); row=[]; f=''; }
-        else if(c !== '\r'){ f+=c; }
+        scrollTop.scrollLeft = wrap.scrollLeft;
       }
+      syncing = false;
     }
-    if(f.length || row.length){ row.push(f); rows.push(row); }
-    return rows;
-  }
-
-  const tbody      = document.getElementById('tbody');
-  const statusEl   = document.getElementById('status');
-  const btn        = document.getElementById('refresh');
-  const cbAuto     = document.getElementById('showAuto');
-  const cbManual   = document.getElementById('showManual');
-  const printBtn   = document.getElementById('printBtn');
-
-  // persist toggle state
-  function loadPrefs(){
-    try{
-      const p = JSON.parse(localStorage.getItem('merged_toggles') || '{}');
-      if (typeof p.showAuto === 'boolean')   cbAuto.checked   = p.showAuto;
-      if (typeof p.showManual === 'boolean') cbManual.checked = p.showManual;
-    }catch{}
-  }
-  function savePrefs(){
-    localStorage.setItem('merged_toggles', JSON.stringify({
-      showAuto: cbAuto.checked,
-      showManual: cbManual.checked
-    }));
-  }
-
-  function applyFilter(){
-    const showA = cbAuto.checked;
-    const showM = cbManual.checked;
-    let visible = 0, total = 0;
-    for (const tr of tbody.querySelectorAll('tr')) {
-      total++;
-      const isAuto   = tr.classList.contains('row-auto');
-      const isManual = tr.classList.contains('row-manual');
-      const show = (isAuto && showA) || (isManual && showM) || (!isAuto && !isManual);
-      tr.classList.toggle('is-hidden', !show);
-      if (show) visible++;
+    function syncTopScrollerWidth(){
+      // Make the top scroller's inner width match the table's scrollWidth
+      const w = grid.scrollWidth;
+      scrollTopInner.style.width = w + 'px';
+      // Keep positions aligned
+      scrollTop.scrollLeft = wrap.scrollLeft;
     }
-    statusEl.textContent = `loaded ${total} rows • showing ${visible} • ${new Date().toUTCString()}`;
-    savePrefs();
-  }
 
-  function render(rows){
-    // rows[0] is header from CSV (includes "Type" as first col)
-    const [hdr, ...data] = rows;
-    const idxType = hdr.indexOf('Type');
+    // Event wiring
+    fAuto.addEventListener('change', applyFilters);
+    fManual.addEventListener('change', applyFilters);
+    btnRefresh.addEventListener('click', load);
+    wrap.addEventListener('scroll', ()=>syncScroll(false));
+    scrollTop.addEventListener('scroll', ()=>syncScroll(true));
+    window.addEventListener('resize', syncTopScrollerWidth);
 
-    const columns = ["Time","Position","COG/SOG","HdgMag/HdgTrue","AWS/TWS/TWD","Temp/Pres/Hum","Pitch/Roll","Crew","APilot","Prop","Vis","Sea","Observations"];
-    const colIdx = Object.fromEntries(columns.map(h => [h, hdr.indexOf(h)]));
-
-    tbody.innerHTML = '';
-    for(const r of data){
-      if(!r || !r.some(x => x && x.trim() !== '')) continue;
-
-      const type = (idxType >= 0 ? (r[idxType] || '').toLowerCase() : '');
-      const tr = document.createElement('tr');
-      tr.className = type === 'manual' ? 'row-manual'
-                 : type === 'auto'   ? 'row-auto'
-                 : '';
-
-      for(const h of columns){
-        const td = document.createElement('td');
-        const j = colIdx[h];
-        td.textContent = j >= 0 ? (r[j] ?? '') : '';
-        tr.appendChild(td);
-      }
-      tbody.appendChild(tr);
-    }
-    applyFilter(); // apply current toggles after every load
-  }
-
-  async function load(){
-    try{
-      statusEl.textContent = 'loading…';
-      btn.disabled = true;
-      const res = await fetch('/data/merged_log_with_type.csv', { cache: 'no-store' });
-      if(!res.ok) throw new Error('HTTP '+res.status);
-      const text = await res.text();
-      const rows = parseCSV(text);
-      render(rows);
-    }catch(e){
-      console.error(e);
-      statusEl.textContent = 'failed to load';
-    }finally{
-      btn.disabled = false;
-    }
-  }
-
-  // Print
-  printBtn.addEventListener('click', () => {
-    // Stamp a small footer in the console for traceability (optional)
-    console.log('Printed at', new Date().toUTCString());
-    window.print();
-  });
-
-  // init
-  loadPrefs();
-  cbAuto.addEventListener('change', applyFilter);
-  cbManual.addEventListener('change', applyFilter);
-  btn.addEventListener('click', load);
-  load();
-  setInterval(load, 60000); // auto refresh every 60s
+    // Initial load + periodic refresh
+    load();
+    setInterval(load, 60000);
+  })();
   </script>
 </body>
 </html>
