@@ -4,17 +4,7 @@ A lightweight electronic ship’s logbook with auto-logging from SignalK and man
 Designed for yacht use: offline-first, simple CSV/SQLite storage, and a clean viewer optimized for cockpit/iPad.
 
 ---
-## Versions
 
-## v0.4.5
-
-** — merged viewer polished:
-  - Observations shown as wrapped grey text on a new row beneath each entry.
-  - Top scrollbar enabled, viewer uses full width.
-  - Row tinting (autolog green / manual red) preserved.
-  - Sea state column fixed and visible again.
-  - Overall layout optimized for readability (desktop + tablet).
-  
 ## Features (v0.4.4)
 
 - **Autologs (hourly)**  
