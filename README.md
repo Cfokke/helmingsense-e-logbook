@@ -37,15 +37,6 @@ Designed for yacht use: offline-first, simple CSV/SQLite storage, and a clean vi
 
 ---
 
-## Versions
-
-- **v0.4.4** — Stable release with **styled manual entry page** (mobile-ready), nautical UI refinements, soft-edge merged viewer.  
-- **v0.4.3** — Stable release with **manual entries enriched** with latest autolog values; auto CSV/print export.  
-- **v0.4.2** — Stable release with autolog + manual services automated via systemd.  
-- **v0.4.1** — Stable release with services auto-started (viewer, manual, autolog).  
-- **v0.4.0** — First stable merged viewer with tinting, filters, and exports.  
-
-Older tags (v0.2.x, v0.3.0) remain for reference.
 
 ---
 
