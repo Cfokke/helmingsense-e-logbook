@@ -5,7 +5,7 @@ Designed for yacht use: offline-first, simple CSV/SQLite storage, and a clean vi
 
 ---
 
-## Features (v0.4.4)
+## Features (v0.4.6)
 
 - **Autologs (hourly)**  
   - Top-of-the-hour autologging from SignalK snapshot.  
