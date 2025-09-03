@@ -1,0 +1,12 @@
+[Unit]
+Description=Helmingsense DD-STW batch processor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=chris
+WorkingDirectory=/home/chris/helmingsense-e-logbook
+Environment=WGRIB2=/home/chris/miniforge3/envs/gribtools/bin/wgrib2
+ExecStart=/usr/bin/bash -lc '/home/chris/helmingsense-e-logbook/bin/run_stw.sh'
+Nice=5

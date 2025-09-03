@@ -1,0 +1,12 @@
+[Unit]
+Description=Run DD-STW hourly (safety net)
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1h
+Unit=helmingsense-stw.service
+AccuracySec=1min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
