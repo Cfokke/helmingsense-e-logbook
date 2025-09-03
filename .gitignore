@@ -1,3 +1,12 @@
 data/
 data/
 app/web/ui/public/*.csv
+
+# DD-STW artifacts
+data/grib_currents/*.grb2
+data/derived/stw/*.csv
+data/derived/stw/*-summary.txt
+logs/*
+!logs/.gitkeep
+config/*.json
+!config/.gitkeep

@@ -1,0 +1,10 @@
+[Unit]
+Description=Trigger DD-STW when inputs change
+
+[Path]
+PathChanged=/home/chris/helmingsense-e-logbook/data/grib_currents/current.grb2
+PathChanged=/home/chris/helmingsense-e-logbook/data/current_route.csv
+PathChanged=/home/chris/helmingsense-e-logbook/config/stw.json
+
+[Install]
+WantedBy=multi-user.target
