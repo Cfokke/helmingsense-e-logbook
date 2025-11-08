@@ -1,0 +1,7 @@
+When re-installing Signalk and updating the node version to 20 the following needed to be fixed:
+
+snapshot_signalk.service was still pointing at a removed Python script in /home/chris/templates/.
+That left data/signalk_snapshot.json frozen at 2025-11-01 17:09Z.
+Autolog reads that file by design, so all rows appeared stale.
+Fix: override the unit to run your Node daemon:
+/usr/bin/node app/services/snapshot/index.js in /home/chris/helmingsense-e-logbook.
