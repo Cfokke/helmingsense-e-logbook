@@ -93,6 +93,10 @@ sudo systemctl restart elog-autolog.service \
                       elog-merged-export.path
 Versions
 
+v0.4.7- All source code remains the same- two new documents: INSTALL.PI5.MD+ guides the user to install to a pi5
+        4.7 extension...This incorporates a passage planning tool accessed from manual Log that will populate the
+        OBS section of the manual log with a full passage plan.
+
 v0.4.6 — merged viewer now auto-refreshes every 60s in Edge and mobile (no third-party needed).
 
 v0.4.5 — merged viewer polished: obs-row (grey), top scrollbar, full-width layout, sea column fixed.
